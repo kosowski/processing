@@ -567,6 +567,10 @@ public class PShader implements PConstants {
   }
 
 
+  public void setGlTexture(String name, int textureID) {
+    setUniformImpl(name, UniformValue.GLSAMPLER2D, textureID);
+  }
+
   /**
    * Extra initialization method that can be used by subclasses, called after
    * compiling and attaching the vertex and fragment shaders, and before
@@ -736,7 +740,7 @@ public class PShader implements PConstants {
 
   protected void setUniformImpl(String name, int type, Object value) {
     if (uniformValues == null) {
-      uniformValues = new HashMap<String, UniformValue>();
+      uniformValues = new HashMap<>();
     }
     uniformValues.put(name, new UniformValue(type, value));
   }
@@ -826,10 +830,29 @@ public class PShader implements PConstants {
           PImage img = (PImage)val.value;
           Texture tex = currentPG.getTexture(img);
 
-          if (textures == null) textures = new HashMap<Integer, Texture>();
+          if (textures == null) textures = new HashMap<>();
           textures.put(loc, tex);
 
-          if (texUnits == null) texUnits = new HashMap<Integer, Integer>();
+          if (texUnits == null) texUnits = new HashMap<>();
+          if (texUnits.containsKey(loc)) {
+            unit = texUnits.get(loc);
+            pgl.uniform1i(loc, unit);
+          } else {
+            texUnits.put(loc, unit);
+            pgl.uniform1i(loc, unit);
+          }
+          unit++;
+        }
+        else if (val.type == UniformValue.GLSAMPLER2D) {  //low level GL texture, as a hack to reusetexUnits and textures Lists,
+                                                          //create an empty texture with the relevant info for the later binding: target and glname
+          Texture tex = new Texture(currentPG);           //TODO: Reuse Texture instead of creating new one every frame
+          tex.glTarget = PGL.TEXTURE_2D;
+          tex.glName = (int)val.value;
+
+          if (textures == null) textures = new HashMap<>();
+          textures.put(loc, tex);
+
+          if (texUnits == null) texUnits = new HashMap<>();
           if (texUnits.containsKey(loc)) {
             unit = texUnits.get(loc);
             pgl.uniform1i(loc, unit);
@@ -1466,6 +1489,7 @@ public class PShader implements PConstants {
     static final int MAT3      = 17;
     static final int MAT4      = 18;
     static final int SAMPLER2D = 19;
+    static final int GLSAMPLER2D = 100;
 
     int type;
     Object value;
